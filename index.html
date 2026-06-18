@@ -842,7 +842,12 @@ async function analyze() {
     await new Promise(r => setTimeout(r, 600));
   }
 
-  const data = getAnalysis(query);
+  let data;
+try {
+  data = await analyzeWithAI(query, mp);
+} catch(e) {
+  data = getAnalysis(query);
+}
   document.getElementById('toolLoading').classList.remove('show');
   renderResults(query, mp, data);
   document.getElementById('toolResults').classList.add('show');
@@ -951,7 +956,50 @@ function animateBars() {
   });
 }
 
-// Enter key
+// async function analyzeWithAI(query, mp) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": "YOUR_KEY_HERE",
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages: [{
+        role: "user",
+        content: `Ты эксперт по маркетплейсам Wildberries и Ozon. Проанализируй нишу "${query}" для маркетплейса ${mp === 'wb' ? 'Wildberries' : mp === 'ozon' ? 'Ozon' : 'Wildberries и Ozon'}.
+
+Ответь ТОЛЬКО в формате JSON без лишнего текста:
+{
+  "score": число от 0 до 100,
+  "scoreClass": "hot" или "warm" или "cold",
+  "verdict": "короткий вердикт",
+  "desc": "2 предложения описания",
+  "demand": число запросов в месяц примерно,
+  "competitors": примерное число конкурентов,
+  "avgPrice": средняя цена в рублях,
+  "trend": "+X%" или "-X%",
+  "saturation": число от 0 до 100,
+  "margin": число от 0 до 100,
+  "quality": число от 0 до 100,
+  "growth": число от 0 до 100,
+  "topCompetitors": [
+    {"name": "название", "sales": "X продаж/мес", "price": "X ₽"},
+    {"name": "название", "sales": "X продаж/мес", "price": "X ₽"},
+    {"name": "название", "sales": "X продаж/мес", "price": "X ₽"}
+  ],
+  "insight": "подробный совет 3-4 предложения стоит ли заходить"
+}`
+      }]
+    })
+  });
+  const data = await response.json();
+  const text = data.content[0].text;
+  return JSON.parse(text);
+}
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nicheInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') analyze();
